@@ -1,4 +1,16 @@
 ﻿#include "Game.h"
+std::mutex myMutex;
+
+void InputThread(GameWorld * t) {
+    while (true) {
+        std::lock_guard<std::mutex> Lock(myMutex);
+
+        if (_kbhit()) {
+            t->player.handleInput(_getch());
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
 GameWorld::GameWorld() {
     worldMessage = L"Loading World";
     //removes the cursor 
@@ -6,30 +18,20 @@ GameWorld::GameWorld() {
     GetConsoleCursorInfo(ConsoleOutputHandle, &cursorInfo);
     cursorInfo.bVisible = false; // set the cursor visibility
     SetConsoleCursorInfo(ConsoleOutputHandle, &cursorInfo);
+    DWORD dwMode;
+
+    GetConsoleMode(ConsoleInputHandle, &dwMode);
+    SetConsoleMode(ConsoleInputHandle, dwMode | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
+
+    this->playerInputThread = std::thread(&InputThread,this);
+
 };
 void GameWorld::mainLoop() {
-    int x = 0;
-    INPUT_RECORD irec;
-    LPDWORD a = (LPDWORD) new LPDWORD;
-    while (true) {
-        ReadConsoleInput(ConsoleInputHandle, &irec, 1, a);
 
+    while (true) {
         outWorldMessage();
         drawPlayer();
-        //x++;
-        if (irec.EventType == KEY_EVENT
-            && ((KEY_EVENT_RECORD&)irec.Event).bKeyDown
-            )//&& ! ((KEY_EVENT_RECORD&)irec.Event).wRepeatCount )
-        {
-            auto k = (KEY_EVENT_RECORD&)irec.Event;
-            //std::cout << k.uChar.AsciiChar << "\n";
-            if (k.uChar.AsciiChar == 'w') {
 
-            }
-            this->player.handleInput(k.uChar.AsciiChar);
-        }
-
-        //this->player.setDirection(Player::DIRECTIONS(x%4));
     }
 }
 void GameWorld::drawPlayer() {
